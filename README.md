@@ -1,5 +1,9 @@
 # TeleStream 🚀
 
+<p align="center">
+  <img src="logo.jpg" alt="TeleStream Logo" width="180" style="border-radius: 36px;" />
+</p>
+
 > **Zero-Cost Serverless Telegram Video Streaming App for Android**  
 > Built with **Kotlin, Jetpack Compose, AndroidX Media3 (ExoPlayer)**, and an embedded in-app range streaming bridge.
 
