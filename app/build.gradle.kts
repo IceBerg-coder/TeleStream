@@ -62,6 +62,9 @@ android {
 }
 
 dependencies {
+    // Official TDLib Native Library (MTProto Engine)
+    implementation(files("libs/core-release.aar"))
+
     // AndroidX Core & Lifecycle
     implementation("androidx.core:core-ktx:1.13.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")

@@ -39,6 +39,11 @@ jobs:
       - name: Make Gradlew Executable
         run: chmod +x gradlew
 
+      - name: Download TDLib Native Engine
+        run: |
+          mkdir -p app/libs
+          curl -L -s -o app/libs/core-release.aar https://github.com/AkashPriyadarshii/tdlib-android/releases/download/v0.1.1/core-release.aar
+
       - name: Build Debug APK
         run: gradle assembleDebug --stacktrace
 
