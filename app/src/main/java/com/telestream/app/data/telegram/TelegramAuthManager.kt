@@ -238,29 +238,80 @@ class TelegramAuthManager(
         )
     }
 
-    fun getVideosForChannel(channelId: Long): List<VideoItem> {
-        return listOf(
-            VideoItem(
-                id = "priv_1",
-                title = "Dune: Part Two (2024) [4K IMAX HDR]",
-                description = "Direct stream via your Telegram User Session",
-                durationText = "02:46:12",
-                channelTitle = "Exclusive 4K Cinema (Private)",
-                thumbnailUrl = "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&auto=format&fit=crop",
-                directUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-                fileSizeFormatted = "2.1 GB"
-            ),
-            VideoItem(
-                id = "priv_2",
-                title = "Planet Earth III - Deep Ocean (Episode 6)",
-                description = "Direct stream from joined private channel",
-                durationText = "58:32",
-                channelTitle = "Documentary Vault [Restricted]",
-                thumbnailUrl = "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&auto=format&fit=crop",
-                directUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-                fileSizeFormatted = "890 MB"
-            )
-        )
+    fun fetchChannelVideos(chatId: Long, onResult: (List<VideoItem>) -> Unit) {
+        val req = TdApi.GetChatHistory(chatId, 0, 0, 50, false)
+        client?.send(req, { result ->
+            if (result is TdApi.Messages) {
+                val videos = mutableListOf<VideoItem>()
+                for (msg in result.messages) {
+                    val content = msg.content
+                    if (content is TdApi.MessageVideo) {
+                        val v = content.video
+                        val caption = content.caption?.text ?: ""
+                        val title = caption.ifBlank { v.fileName.ifBlank { "Video #${msg.id}" } }
+                        val minutes = v.duration / 60
+                        val seconds = v.duration % 60
+                        val durationStr = String.format("%02d:%02d", minutes, seconds)
+                        val sizeMb = v.video.size / (1024 * 1024)
+
+                        // Trigger download ahead of time so chunks start streaming
+                        startFileDownload(v.video.id)
+
+                        videos.add(
+                            VideoItem(
+                                id = "${msg.chatId}_${msg.id}",
+                                title = title,
+                                description = "Telegram Video (Message #${msg.id})",
+                                durationText = durationStr,
+                                channelTitle = "Telegram Channel",
+                                telegramFileId = "${v.video.id}",
+                                directUrl = "",
+                                fileSizeFormatted = "${sizeMb} MB"
+                            )
+                        )
+                    } else if (content is TdApi.MessageDocument) {
+                        val doc = content.document
+                        val mime = doc.mimeType ?: ""
+                        val name = doc.fileName ?: ""
+                        val isVideo = mime.startsWith("video/") || name.endsWith(".mp4", true) || name.endsWith(".mkv", true) || name.endsWith(".webm", true)
+                        if (isVideo) {
+                            val caption = content.caption?.text ?: ""
+                            val title = caption.ifBlank { name.ifBlank { "Document #${msg.id}" } }
+                            val sizeMb = doc.document.size / (1024 * 1024)
+
+                            startFileDownload(doc.document.id)
+
+                            videos.add(
+                                VideoItem(
+                                    id = "${msg.chatId}_${msg.id}",
+                                    title = title,
+                                    description = "Video Document (Message #${msg.id})",
+                                    durationText = "--:--",
+                                    channelTitle = "Telegram Document",
+                                    telegramFileId = "${doc.document.id}",
+                                    directUrl = "",
+                                    fileSizeFormatted = "${sizeMb} MB"
+                                )
+                            )
+                        }
+                    }
+                }
+                mainHandler.post { onResult(videos) }
+            } else {
+                mainHandler.post { onResult(emptyList()) }
+            }
+        }, null)
+    }
+
+    fun startFileDownload(fileId: Int) {
+        client?.send(TdApi.DownloadFile(fileId, 32, 0, 0, false), null, null)
+    }
+
+    fun getFile(fileId: Int, onResult: (TdApi.File?) -> Unit) {
+        client?.send(TdApi.GetFile(fileId), { result ->
+            if (result is TdApi.File) onResult(result)
+            else onResult(null)
+        }, null)
     }
 
     private fun postState(state: AuthState) {

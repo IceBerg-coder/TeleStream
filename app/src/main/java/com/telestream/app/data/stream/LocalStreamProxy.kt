@@ -96,6 +96,21 @@ class LocalStreamProxy(
 
             val (urlParam, fileIdParam) = parseQueryParams(rawUri)
 
+            // 1. Check if this is a TDLib native file ID (User Mode / Private Channel)
+            val tdlibId = fileIdParam.toIntOrNull()
+            if (tdlibId != null) {
+                com.telestream.app.TeleStreamApp.instance.authManager.startFileDownload(tdlibId)
+                val localPath = getTdlibFilePath(tdlibId)
+                if (!localPath.isNullOrEmpty()) {
+                    val localFile = File(localPath)
+                    if (localFile.exists() && localFile.length() > 0) {
+                        serveLocalFile(localFile, rangeHeader, output)
+                        return@withContext
+                    }
+                }
+            }
+
+            // 2. Fallback to Bot API or Direct URL
             val targetUrl = when {
                 fileIdParam.isNotEmpty() -> resolveTelegramFileUrl(fileIdParam)
                 urlParam.isNotEmpty() -> urlParam
@@ -205,6 +220,56 @@ class LocalStreamProxy(
         while (upstreamStream.read(buffer).also { read = it } != -1) {
             clientOutput.write(buffer, 0, read)
         }
+        clientOutput.flush()
+    }
+
+    private fun getTdlibFilePath(fileId: Int): String? {
+        var path: String? = null
+        val latch = java.util.concurrent.CountDownLatch(1)
+        com.telestream.app.TeleStreamApp.instance.authManager.getFile(fileId) { file ->
+            path = file?.local?.path
+            latch.countDown()
+        }
+        latch.await(2, TimeUnit.SECONDS)
+        return path
+    }
+
+    private fun serveLocalFile(file: File, rangeHeader: String?, clientOutput: OutputStream) {
+        val raf = RandomAccessFile(file, "r")
+        val fileLength = raf.length()
+        var start = 0L
+        var end = fileLength - 1
+
+        if (!rangeHeader.isNullOrEmpty() && rangeHeader.startsWith("bytes=")) {
+            val parts = rangeHeader.removePrefix("bytes=").split("-")
+            start = parts[0].toLongOrNull() ?: 0L
+            if (parts.size > 1 && parts[1].isNotEmpty()) {
+                end = parts[1].toLongOrNull() ?: (fileLength - 1)
+            }
+        }
+
+        val contentLength = end - start + 1
+        val pw = PrintWriter(clientOutput, false)
+        pw.println(if (rangeHeader != null) "HTTP/1.1 206 Partial Content" else "HTTP/1.1 200 OK")
+        pw.println("Content-Type: video/mp4")
+        pw.println("Accept-Ranges: bytes")
+        pw.println("Content-Range: bytes $start-$end/$fileLength")
+        pw.println("Content-Length: $contentLength")
+        pw.println("Connection: close")
+        pw.println()
+        pw.flush()
+
+        raf.seek(start)
+        val buffer = ByteArray(64 * 1024)
+        var remaining = contentLength
+        while (remaining > 0) {
+            val toRead = minOf(buffer.size.toLong(), remaining).toInt()
+            val read = raf.read(buffer, 0, toRead)
+            if (read == -1) break
+            clientOutput.write(buffer, 0, read)
+            remaining -= read
+        }
+        raf.close()
         clientOutput.flush()
     }
 
