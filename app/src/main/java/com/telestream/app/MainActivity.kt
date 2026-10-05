@@ -13,6 +13,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.telestream.app.ui.screens.HomeScreen
+import com.telestream.app.ui.screens.LoginScreen
+import com.telestream.app.ui.screens.ChannelBrowserScreen
+import com.telestream.app.ui.screens.ChannelVideosScreen
 import com.telestream.app.ui.screens.PlayerScreen
 import com.telestream.app.ui.screens.SettingsScreen
 import com.telestream.app.ui.theme.DarkBackground
@@ -54,7 +57,53 @@ fun TeleStreamNavigation() {
                 },
                 onOpenSettings = {
                     navController.navigate("settings")
+                },
+                onOpenLogin = {
+                    navController.navigate("login")
+                },
+                onOpenChannels = {
+                    navController.navigate("channels")
                 }
+            )
+        }
+
+        composable("login") {
+            LoginScreen(
+                onLoginSuccess = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable("channels") {
+            ChannelBrowserScreen(
+                onSelectChannel = { channelId, channelTitle ->
+                    val encodedTitle = URLEncoder.encode(channelTitle, StandardCharsets.UTF_8.toString())
+                    navController.navigate("channel_videos/$channelId/$encodedTitle")
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "channel_videos/{channelId}/{channelTitle}",
+            arguments = listOf(
+                navArgument("channelId") { type = NavType.LongType },
+                navArgument("channelTitle") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val channelId = backStackEntry.arguments?.getLong("channelId") ?: 0L
+            val rawTitle = backStackEntry.arguments?.getString("channelTitle") ?: "Channel Videos"
+            val decodedTitle = URLDecoder.decode(rawTitle, StandardCharsets.UTF_8.toString())
+
+            ChannelVideosScreen(
+                channelId = channelId,
+                channelTitle = decodedTitle,
+                onPlayVideo = { streamUrl, title ->
+                    val encodedUrl = URLEncoder.encode(streamUrl, StandardCharsets.UTF_8.toString())
+                    val encodedTitle = URLEncoder.encode(title, StandardCharsets.UTF_8.toString())
+                    navController.navigate("player/$encodedUrl/$encodedTitle")
+                },
+                onBack = { navController.popBackStack() }
             )
         }
 

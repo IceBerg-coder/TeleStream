@@ -15,11 +15,14 @@ class TeleStreamApp : Application() {
         private set
     lateinit var appPreferences: AppPreferences
         private set
+    lateinit var authManager: com.telestream.app.data.telegram.TelegramAuthManager
+        private set
 
     override fun onCreate() {
         super.onCreate()
         instance = this
         appPreferences = AppPreferences(this)
+        authManager = com.telestream.app.data.telegram.TelegramAuthManager(this, appPreferences)
         
         // Start local zero-cost streaming proxy on device
         streamProxy = LocalStreamProxy(this, appPreferences)

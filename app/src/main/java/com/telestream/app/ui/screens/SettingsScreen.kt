@@ -58,6 +58,66 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // User Session Management Card
+            val authManager = remember { TeleStreamApp.instance.authManager }
+            val authState by authManager.authState.collectAsState()
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = if (prefs.isUserLoggedIn) Color(0xFF1E1428) else DarkSurface),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        1.dp,
+                        if (prefs.isUserLoggedIn) Color(0xFFD946EF).copy(alpha = 0.5f) else DarkCardBorder,
+                        RoundedCornerShape(12.dp)
+                    )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = if (prefs.isUserLoggedIn) "Telegram User Session" else "Private Channel Access",
+                                color = if (prefs.isUserLoggedIn) Color(0xFFD946EF) else PrimaryBlue,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                            Text(
+                                text = if (prefs.isUserLoggedIn) prefs.userPhoneNumber.ifEmpty { "Connected Member" } else "Not logged in",
+                                color = TextSecondary,
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        if (prefs.isUserLoggedIn) {
+                            OutlinedButton(
+                                onClick = { authManager.logout() },
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = StatusError),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Log Out", fontSize = 12.sp)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = if (prefs.isUserLoggedIn)
+                            "You are logged in with your Telegram account. TeleStream can stream videos directly from any private channel you belong to."
+                        else
+                            "Log in with your Telegram account to access and stream from third-party private channels where you are a member.",
+                        color = TextMuted,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+
             // Explanatory Info Card
             Card(
                 colors = CardDefaults.cardColors(containerColor = DarkSurface),

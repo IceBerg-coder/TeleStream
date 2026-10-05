@@ -32,9 +32,13 @@ import com.telestream.app.ui.theme.*
 @Composable
 fun HomeScreen(
     onPlayVideo: (streamUrl: String, title: String) -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onOpenLogin: () -> Unit,
+    onOpenChannels: () -> Unit
 ) {
     val proxy = remember { TeleStreamApp.instance.streamProxy }
+    val authManager = remember { TeleStreamApp.instance.authManager }
+    val authState by authManager.authState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     var showCustomUrlDialog by remember { mutableStateOf(false) }
     var customUrlInput by remember { mutableStateOf("") }
@@ -225,6 +229,110 @@ fun HomeScreen(
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
+                        }
+                    }
+                }
+            }
+
+            // Private Channels & User Authentication Status Card
+            item {
+                if (authState is com.telestream.app.data.telegram.AuthState.LoggedIn) {
+                    val user = authState as com.telestream.app.data.telegram.AuthState.LoggedIn
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .border(1.dp, Color(0xFFD946EF).copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                            .clickable(onClick = onOpenChannels),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1428))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "🔒 MY PRIVATE CHANNELS",
+                                        color = Color(0xFFD946EF),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Browse Joined Channels",
+                                    color = TextPrimary,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Logged in as ${user.name} • 3 channels ready",
+                                    color = TextSecondary,
+                                    fontSize = 12.sp
+                                )
+                            }
+
+                            Button(
+                                onClick = onOpenChannels,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD946EF)),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("Browse", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                } else {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .border(1.dp, PrimaryBlue.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                            .clickable(onClick = onOpenLogin),
+                        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "🔓 STREAM PRIVATE CHANNELS",
+                                        color = AccentCyan,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Log In With Telegram",
+                                    color = TextPrimary,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Stream from channels you don't own with your Telegram account.",
+                                    color = TextSecondary,
+                                    fontSize = 12.sp
+                                )
+                            }
+
+                            Button(
+                                onClick = onOpenLogin,
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("Log In", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
                         }
                     }
                 }
